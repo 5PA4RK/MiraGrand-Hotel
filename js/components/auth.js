@@ -80,6 +80,8 @@ const Auth = {
         Helpers.showNotification(`Welcome, ${this.currentUser.displayName}!`, 'success');
     },
 
+
+    
     async logout() {
         // Leave hall
         if (this.currentUser) {
@@ -143,5 +145,41 @@ const Auth = {
         return this.isAdmin;
     }
 };
+// Add this temporarily to your Auth object for debugging
+async function debugLogin() {
+    const username = document.getElementById('usernameInput').value.trim();
+    const password = document.getElementById('passwordInput').value;
+    
+    console.log("🔍 Debug Login Attempt:");
+    console.log("Username:", username);
+    console.log("Password length:", password.length);
+    
+    // Direct database check
+    const { data: user, error } = await supabaseClient
+        .from('user_management')
+        .select('*')
+        .eq('username', username)
+        .single();
+    
+    if (error) {
+        console.log("❌ Database error:", error);
+    } else {
+        console.log("✅ User found in DB:", user);
+        console.log("Stored hash:", user.password_hash);
+        
+        // Test the verify_password function
+        const { data: verifyResult, error: verifyError } = await supabaseClient
+            .rpc('verify_password', {
+                stored_hash: user.password_hash,
+                password: password
+            });
+        
+        console.log("Verify function result:", verifyResult);
+        console.log("Verify function error:", verifyError);
+    }
+}
+
+// You can call this from browser console: Auth.debugLogin()
+Auth.debugLogin = debugLogin;
 
 window.Auth = Auth;
