@@ -3,21 +3,51 @@ const DB = {
     // User functions
     async authenticateUser(username, password) {
         try {
-            const { data: userData, error: userError } = await supabaseClient
+            console.log("🔐 Attempting to authenticate:", username);
+            
+            // Get user from database
+            const { data: userData, error } = await supabaseClient
                 .from('user_management')
                 .select('id, username, display_name, password_hash, role, is_active, avatar_url')
-                .ilike('username', username)
+                .eq('username', username)
                 .eq('is_active', true)
                 .single();
             
-            if (userError || !userData) return null;
+            if (error || !userData) {
+                console.log("❌ User not found:", error);
+                return null;
+            }
             
-            // Simple password check (in production, use proper hashing)
-            if (userData.password_hash !== password) return null;
+            console.log("✅ User found:", userData.username);
             
+            // Verify password using RPC function
+            const { data: isValid, error: verifyError } = await supabaseClient
+                .rpc('verify_password', {
+                    stored_hash: userData.password_hash,
+                    password: password
+                });
+            
+            if (verifyError) {
+                console.error("❌ Password verification error:", verifyError);
+                
+                // Fallback: direct comparison for testing (remove in production)
+                if (userData.password_hash === password) {
+                    console.log("⚠️ Using fallback password comparison");
+                    return userData;
+                }
+                return null;
+            }
+            
+            if (!isValid) {
+                console.log("❌ Invalid password");
+                return null;
+            }
+            
+            console.log("✅ Password verified successfully");
             return userData;
+            
         } catch (error) {
-            console.error("Auth error:", error);
+            console.error("❌ Authentication error:", error);
             return null;
         }
     },
