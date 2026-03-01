@@ -18,24 +18,25 @@
         </div>
         <div class="modal-body">
             <!-- Mira Message Box (No Login Required) -->
-            <div class="mira-message-section">
-                <div class="mira-avatar">
-                    <i class="fas fa-robot"></i>
-                </div>
-                <div class="mira-message-content">
-                    <h3>Message Mira <span class="mira-badge">AI Assistant</span></h3>
-                    <p>No login required - Write a message to Mira</p>
-                    <div class="mira-input-group">
-                        <textarea id="miraMessageInput" class="form-input" placeholder="Type your message to Mira... (No login needed)" rows="2"></textarea>
-                        <button id="sendMiraMessageBtn" class="btn btn-primary">
-                            <i class="fas fa-paper-plane"></i> Send to Mira
-                        </button>
-                    </div>
-                    <div id="miraMessageSuccess" class="success-message" style="display: none;">
-                        <i class="fas fa-check-circle"></i> Message sent to Mira!
-                    </div>
-                </div>
-            </div>
+<!-- Mira Message Box (No Login Required) -->
+<div class="mira-message-section">
+    <div class="mira-avatar">
+        <i class="fas fa-user-tie"></i> <!-- Changed from fa-robot to fa-user-tie -->
+    </div>
+    <div class="mira-message-content">
+        <h3>Message Mira <span class="mira-badge">Hotel Manager</span></h3> 
+        <p>No login required - Send a message to the Hotel Manager</p>
+        <div class="mira-input-group">
+            <textarea id="miraMessageInput" class="form-input" placeholder="Type your message to Mira (Hotel Manager)... (No login needed)" rows="2"></textarea>
+            <button id="sendMiraMessageBtn" class="btn btn-primary">
+                <i class="fas fa-paper-plane"></i> Send to Mira
+            </button>
+        </div>
+        <div id="miraMessageSuccess" class="success-message" style="display: none;">
+            <i class="fas fa-check-circle"></i> Message sent to Mira!
+        </div>
+    </div>
+</div>
 
             <hr style="border-color: var(--border-color); margin: 25px 0;">
 
