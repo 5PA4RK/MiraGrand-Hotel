@@ -469,15 +469,44 @@ async function denyRequest(requestId) {
 }
 
 // ============================================
-// ADMIN FUNCTIONS (Only for Mira)
+// ADMIN FUNCTIONS - ENHANCED
 // ============================================
 
+// Load admin data with better error handling
 async function loadAdminData() {
-    if (!AppState.isMiraAdmin) return;
+    console.log("Loading admin data...");
     
-    await loadAdminUsers();
-    await loadAdminRooms();
-    await loadMessagesToMira();
+    if (!AppState.isMiraAdmin) {
+        console.log("Not Mira admin, cannot load admin data");
+        return;
+    }
+    
+    try {
+        await loadAdminUsers();
+        await loadAdminRooms();
+        await loadMessagesToMira();
+        console.log("✅ Admin data loaded successfully");
+    } catch (error) {
+        console.error("Error loading admin data:", error);
+    }
+}
+
+// Make sure admin panel is visible when switching
+function switchToAdminPanel() {
+    console.log("Switching to admin panel");
+    
+    // Hide all panels
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active-panel'));
+    
+    // Show admin panel
+    const adminPanel = document.getElementById('adminPanel');
+    if (adminPanel) {
+        adminPanel.classList.add('active-panel');
+        adminPanel.style.display = 'block';
+    }
+    
+    // Load data
+    loadAdminData();
 }
 
 async function loadAdminUsers() {
