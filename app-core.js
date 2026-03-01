@@ -183,6 +183,83 @@ function saveSession() {
     };
     saveToStorage('session', sessionData);
 }
+// ============================================
+// DATABASE SETUP HELPER
+// ============================================
+
+async function setupDatabase() {
+    console.log("🔧 Checking database setup...");
+    
+    // Check if we can connect
+    try {
+        const { data, error } = await supabaseClient
+            .from('user_management')
+            .select('count')
+            .limit(1);
+        
+        if (error) {
+            console.error("Database connection error:", error);
+            return;
+        }
+        
+        console.log("✅ Database connected");
+        
+        // Check if mira user exists
+        const { data: miraUser } = await supabaseClient
+            .from('user_management')
+            .select('*')
+            .eq('username', 'mira')
+            .maybeSingle();
+        
+        if (!miraUser) {
+            console.log("Creating mira user...");
+            
+            // Create mira user
+            const { error: createError } = await supabaseClient
+                .from('user_management')
+                .insert([{
+                    username: 'mira',
+                    display_name: 'Mira',
+                    password_hash: 'mira123',
+                    role: 'admin',
+                    is_active: true,
+                    created_at: new Date().toISOString()
+                }]);
+            
+            if (createError) {
+                console.error("Error creating mira user:", createError);
+            } else {
+                console.log("✅ Mira user created successfully");
+            }
+        } else {
+            console.log("✅ Mira user exists");
+        }
+        
+    } catch (error) {
+        console.error("Database setup error:", error);
+    }
+}
+
+async function initApp() {
+    console.log("🚀 Initializing MiraGrand-Hotel...");
+    
+    // Setup event listeners
+    setupCoreEventListeners();
+    
+    // Check database setup (optional, can be removed in production)
+    await setupDatabase();
+    
+    // Check for saved session
+    const hasSession = await loadSession();
+    
+    if (hasSession) {
+        hideConnectionModal();
+        updateUIAfterLogin();
+        setupRealtimeSubscriptions();
+    } else {
+        showConnectionModal();
+    }
+}
 
 // Load session
 async function loadSession() {
@@ -197,16 +274,21 @@ async function loadSession() {
         AppState.isMiraAdmin = session.isMiraAdmin || false;
         
         // Verify session is still valid
-        const { data: user } = await supabaseClient
-            .from('user_management')
-            .select('*')
-            .eq('id', AppState.userId)
-            .single();
-        
-        if (user && user.is_active) {
-            AppState.isAuthenticated = true;
-            AppState.isConnected = true;
-            return true;
+        try {
+            const { data: user, error } = await supabaseClient
+                .from('user_management')
+                .select('*')
+                .eq('id', AppState.userId)
+                .maybeSingle();
+            
+            if (user && user.is_active) {
+                AppState.isAuthenticated = true;
+                AppState.isConnected = true;
+                console.log("Session loaded. Is Mira admin?", AppState.isMiraAdmin);
+                return true;
+            }
+        } catch (error) {
+            console.error("Error verifying session:", error);
         }
     }
     return false;
@@ -255,16 +337,18 @@ function updateUIAfterLogin() {
     DOM.logoutBtn.style.display = 'flex';
     
     // Show/hide admin panel button (only Mira)
+    console.log("Is Mira admin?", AppState.isMiraAdmin);
     if (AppState.isMiraAdmin) {
         DOM.adminPanelBtn.style.display = 'flex';
+        console.log("Admin button should be visible");
     } else {
         DOM.adminPanelBtn.style.display = 'none';
     }
     
     // Update profile panel
-    DOM.profileUsername.value = AppState.userName;
-    DOM.profileDisplayName.value = AppState.userDisplayName;
-    DOM.profileRole.value = AppState.userRole;
+    if (DOM.profileUsername) DOM.profileUsername.value = AppState.userName;
+    if (DOM.profileDisplayName) DOM.profileDisplayName.value = AppState.userDisplayName;
+    if (DOM.profileRole) DOM.profileRole.value = AppState.userRole;
     
     // Update avatar
     updateAvatarDisplay();
@@ -416,36 +500,57 @@ async function handleLogin() {
     DOM.connectBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Logging in...';
     
     try {
-        // Find user
+        // Find user - use exact match, not ilike for case sensitivity
         const { data: user, error } = await supabaseClient
             .from('user_management')
             .select('*')
-            .ilike('username', username)
+            .eq('username', username)  // Use eq instead of ilike for exact match
             .eq('is_active', true)
-            .single();
+            .maybeSingle();  // Use maybeSingle instead of single to avoid errors
         
-        if (error || !user) {
+        if (error) {
+            console.error("Database error:", error);
+            showError("Login failed. Please try again.");
+            return;
+        }
+        
+        if (!user) {
+            console.log("User not found:", username);
             showError("Invalid username or password");
             return;
         }
         
-        // Verify password (simplified - in production use proper hashing)
+        console.log("User found:", user.username, "Role:", user.role);
+        
+        // VERIFY PASSWORD - Fixed version
         let isAuthenticated = false;
         
-        // For demo purposes - in production use proper password verification
+        // For demo purposes - check against test passwords
+        // In production, you should use proper password hashing
         const testPasswords = {
             'guest': 'guest123',
             'host': 'host123',
             'mira': 'mira123'
         };
         
+        // Check if it's a test account with correct password
         if (testPasswords[username.toLowerCase()] === password) {
             isAuthenticated = true;
-        } else if (password === user.password_hash) { // Simple comparison for demo
+            console.log("✅ Test account authenticated");
+        } 
+        // Check if password matches the stored password_hash (for demo)
+        else if (user.password_hash === password) {
             isAuthenticated = true;
+            console.log("✅ Password matched stored hash");
+        }
+        // Special case for mira account
+        else if (username.toLowerCase() === 'mira' && password === 'mira123') {
+            isAuthenticated = true;
+            console.log("✅ Mira account authenticated");
         }
         
         if (!isAuthenticated) {
+            console.log("❌ Password verification failed");
             showError("Invalid username or password");
             return;
         }
@@ -456,16 +561,25 @@ async function handleLogin() {
         AppState.userRole = user.role;
         AppState.userDisplayName = user.display_name || user.username;
         AppState.userAvatar = user.avatar_url;
+        
+        // Check if user is Mira (case insensitive)
         AppState.isMiraAdmin = (user.username.toLowerCase() === 'mira');
+        
         AppState.isAuthenticated = true;
         AppState.isConnected = true;
         AppState.connectionTime = new Date();
         
+        console.log("Login successful. Is Mira admin?", AppState.isMiraAdmin);
+        
         // Update last login
-        await supabaseClient
-            .from('user_management')
-            .update({ last_login: new Date().toISOString() })
-            .eq('id', user.id);
+        try {
+            await supabaseClient
+                .from('user_management')
+                .update({ last_login: new Date().toISOString() })
+                .eq('id', user.id);
+        } catch (updateError) {
+            console.log("Could not update last login:", updateError);
+        }
         
         // Save session
         saveSession();
