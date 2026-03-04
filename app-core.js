@@ -263,7 +263,7 @@ async function initApp() {
 }
 
 // Load session
-// Load session - UPDATED with case-insensitive check
+// Load session - ensure username is synced
 async function loadSession() {
     const session = loadFromStorage('session');
     if (session) {
@@ -275,29 +275,29 @@ async function loadSession() {
         AppState.soundEnabled = session.soundEnabled !== false;
         AppState.isMiraAdmin = session.isMiraAdmin || false;
         
-        // Verify session is still valid
+        // Verify session is still valid and get latest user data
         try {
-            // Get all active users
-            const { data: users, error } = await supabaseClient
+            const { data: user, error } = await supabaseClient
                 .from('user_management')
                 .select('*')
-                .eq('is_active', true);
+                .eq('id', AppState.userId)
+                .single();
             
-            if (error) throw error;
-            
-            // Find user with case-insensitive ID match
-            const user = users?.find(u => u.id === AppState.userId);
-            
-            if (user) {
-                AppState.isAuthenticated = true;
-                AppState.isConnected = true;
-                // Update username to match database case if needed
+            if (user && user.is_active) {
+                // Update with latest data from database
                 AppState.userName = user.username;
                 AppState.userDisplayName = user.display_name || user.username;
                 AppState.userRole = user.role;
+                AppState.userAvatar = user.avatar_url;
                 AppState.isMiraAdmin = (user.username.toLowerCase() === 'mira');
                 
-                console.log("Session loaded. User:", user.username, "Is Mira admin?", AppState.isMiraAdmin);
+                AppState.isAuthenticated = true;
+                AppState.isConnected = true;
+                
+                // Save updated data back to storage
+                saveSession();
+                
+                console.log("Session loaded. User:", user.username);
                 return true;
             }
         } catch (error) {
@@ -305,6 +305,70 @@ async function loadSession() {
         }
     }
     return false;
+}
+// Check if username is available
+async function checkUsernameAvailability(username, currentUserId) {
+    if (!username) return false;
+    
+    try {
+        const { data: users, error } = await supabaseClient
+            .from('user_management')
+            .select('id')
+            .ilike('username', username);
+        
+        if (error) throw error;
+        
+        // If no users found, username is available
+        if (!users || users.length === 0) return true;
+        
+        // If users found, check if it's the current user
+        if (users.length === 1 && users[0].id === currentUserId) return true;
+        
+        // Username is taken by someone else
+        return false;
+        
+    } catch (error) {
+        console.error("Error checking username:", error);
+        return false;
+    }
+}
+
+// Optional: Add real-time username validation
+if (DOM.profileUsername) {
+    let usernameCheckTimeout;
+    DOM.profileUsername.addEventListener('input', () => {
+        clearTimeout(usernameCheckTimeout);
+        usernameCheckTimeout = setTimeout(async () => {
+            const newUsername = DOM.profileUsername.value.trim();
+            if (newUsername && newUsername !== AppState.userName) {
+                const isAvailable = await checkUsernameAvailability(newUsername, AppState.userId);
+                if (!isAvailable) {
+                    // Show warning but don't block - let the update function handle it
+                    DOM.profileUsername.style.borderColor = 'var(--danger-red)';
+                    
+                    // Add a small hint
+                    let hint = document.getElementById('usernameHint');
+                    if (!hint) {
+                        hint = document.createElement('small');
+                        hint.id = 'usernameHint';
+                        hint.style.color = 'var(--danger-red)';
+                        hint.style.display = 'block';
+                        hint.style.marginTop = '5px';
+                        DOM.profileUsername.parentNode.appendChild(hint);
+                    }
+                    hint.textContent = '⚠️ This username is already taken';
+                } else {
+                    DOM.profileUsername.style.borderColor = 'var(--success-green)';
+                    const hint = document.getElementById('usernameHint');
+                    if (hint) hint.remove();
+                }
+            } else {
+                DOM.profileUsername.style.borderColor = '';
+                const hint = document.getElementById('usernameHint');
+                if (hint) hint.remove();
+            }
+        }, 500);
+    });
 }
 
 // Clear session
@@ -732,7 +796,13 @@ async function sendMessageToMira() {
 // ============================================
 
 async function updateProfile() {
+    const newUsername = DOM.profileUsername.value.trim();
     const newDisplayName = DOM.profileDisplayName.value.trim();
+    
+    if (!newUsername) {
+        alert("Username cannot be empty");
+        return;
+    }
     
     if (!newDisplayName) {
         alert("Display name cannot be empty");
@@ -743,28 +813,71 @@ async function updateProfile() {
     DOM.updateProfileBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Updating...';
     
     try {
+        // Check if username is changed and if it's already taken
+        if (newUsername !== AppState.userName) {
+            console.log("Checking if username is available:", newUsername);
+            
+            // Check if username already exists (case-insensitive)
+            const { data: existingUsers, error: checkError } = await supabaseClient
+                .from('user_management')
+                .select('id, username')
+                .ilike('username', newUsername); // Case-insensitive search
+            
+            if (checkError) throw checkError;
+            
+            // Filter out the current user
+            const otherUsers = existingUsers?.filter(u => u.id !== AppState.userId) || [];
+            
+            if (otherUsers.length > 0) {
+                alert(`Username "${newUsername}" is already taken. Please choose another one.`);
+                DOM.updateProfileBtn.disabled = false;
+                DOM.updateProfileBtn.innerHTML = '<i class="fas fa-save"></i> Update Profile';
+                return;
+            }
+            
+            console.log("Username is available!");
+        }
+        
+        // Prepare update data
+        const updateData = {
+            username: newUsername,
+            display_name: newDisplayName,
+            updated_at: new Date().toISOString()
+        };
+        
+        // Update the database
         const { error } = await supabaseClient
             .from('user_management')
-            .update({
-                display_name: newDisplayName,
-                updated_at: new Date().toISOString()
-            })
+            .update(updateData)
             .eq('id', AppState.userId);
         
         if (error) throw error;
         
+        // Update app state
+        const oldUsername = AppState.userName;
+        AppState.userName = newUsername;
         AppState.userDisplayName = newDisplayName;
+        
+        // Save to localStorage
         saveSession();
         
         // Update UI
         DOM.userRoleDisplay.textContent = `${newDisplayName} (${AppState.userRole})`;
         
+        // Show success message
         DOM.profileUpdateMessage.textContent = "Profile updated successfully!";
         DOM.profileUpdateMessage.style.display = 'block';
+        
+        // If username changed, show additional message
+        if (oldUsername !== newUsername) {
+            DOM.profileUpdateMessage.innerHTML += `<br><small>Username changed from "${oldUsername}" to "${newUsername}"</small>`;
+        }
         
         setTimeout(() => {
             DOM.profileUpdateMessage.style.display = 'none';
         }, 3000);
+        
+        console.log("✅ Profile updated successfully");
         
     } catch (error) {
         console.error("Error updating profile:", error);
