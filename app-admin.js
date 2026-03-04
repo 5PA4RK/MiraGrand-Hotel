@@ -377,6 +377,23 @@ async function saveNewUser() {
         return;
     }
     
+    // Check if username already exists
+    try {
+        const { data: existingUsers, error: checkError } = await supabaseClient
+            .from('user_management')
+            .select('id')
+            .ilike('username', username);
+        
+        if (checkError) throw checkError;
+        
+        if (existingUsers && existingUsers.length > 0) {
+            showAddUserError(`Username "${username}" is already taken`);
+            return;
+        }
+    } catch (error) {
+        console.error("Error checking username:", error);
+    }
+    
     const saveBtn = document.getElementById('miraSaveUserBtn');
     saveBtn.disabled = true;
     saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating...';
@@ -394,13 +411,19 @@ async function saveNewUser() {
                 created_by: 'mira'
             }]);
         
-        if (error) throw error;
+        if (error) {
+            console.error("Database insert error:", error);
+            throw error;
+        }
         
         AdminModals.addUser.style.display = 'none';
         await loadAdminUsers();
         
         // Refresh dashboard stats
         loadAdminDashboard();
+        
+        // Show success message
+        alert("User created successfully!");
         
     } catch (error) {
         console.error("Error creating user:", error);
@@ -410,12 +433,69 @@ async function saveNewUser() {
         saveBtn.innerHTML = '<i class="fas fa-save"></i> Create User';
     }
 }
+// Add username availability checker for admin
+document.addEventListener('DOMContentLoaded', () => {
+    const usernameField = document.getElementById('miraEditUsername');
+    if (usernameField) {
+        let checkTimeout;
+        usernameField.addEventListener('input', () => {
+            clearTimeout(checkTimeout);
+            checkTimeout = setTimeout(async () => {
+                const newUsername = usernameField.value.trim();
+                const userId = document.getElementById('miraEditUserId').value;
+                
+                if (newUsername && newUsername !== document.getElementById('miraEditUsername').defaultValue) {
+                    try {
+                        const { data: users, error } = await supabaseClient
+                            .from('user_management')
+                            .select('id')
+                            .ilike('username', newUsername);
+                        
+                        if (error) throw error;
+                        
+                        const otherUsers = users?.filter(u => u.id !== userId) || [];
+                        
+                        if (otherUsers.length > 0) {
+                            usernameField.style.borderColor = 'var(--danger-red)';
+                            
+                            // Add hint
+                            let hint = document.getElementById('adminUsernameHint');
+                            if (!hint) {
+                                hint = document.createElement('small');
+                                hint.id = 'adminUsernameHint';
+                                hint.style.color = 'var(--danger-red)';
+                                hint.style.display = 'block';
+                                hint.style.marginTop = '5px';
+                                usernameField.parentNode.appendChild(hint);
+                            }
+                            hint.textContent = '⚠️ This username is already taken';
+                        } else {
+                            usernameField.style.borderColor = 'var(--success-green)';
+                            const hint = document.getElementById('adminUsernameHint');
+                            if (hint) hint.remove();
+                        }
+                    } catch (error) {
+                        console.error("Error checking username:", error);
+                    }
+                } else {
+                    usernameField.style.borderColor = '';
+                    const hint = document.getElementById('adminUsernameHint');
+                    if (hint) hint.remove();
+                }
+            }, 500);
+        });
+    }
+});
 
 function showAddUserError(message) {
     const errorEl = document.getElementById('miraAddUserError');
     errorEl.textContent = message;
     errorEl.style.display = 'block';
 }
+
+// ============================================
+// USER MANAGEMENT - ENHANCED WITH USERNAME EDIT
+// ============================================
 
 async function openEditUserModal(userId) {
     try {
@@ -426,6 +506,11 @@ async function openEditUserModal(userId) {
             .single();
         
         if (error) throw error;
+        
+        // Remove readonly attribute from username field for admin
+        const usernameField = document.getElementById('miraEditUsername');
+        usernameField.removeAttribute('readonly');
+        usernameField.style.backgroundColor = 'rgba(255, 255, 255, 0.1)'; // Indicate it's editable
         
         document.getElementById('miraEditUserId').value = user.id;
         document.getElementById('miraEditUsername').value = user.username;
@@ -445,6 +530,7 @@ async function openEditUserModal(userId) {
 
 async function updateUser() {
     const userId = document.getElementById('miraEditUserId').value;
+    const newUsername = document.getElementById('miraEditUsername').value.trim();
     const displayName = document.getElementById('miraEditDisplayName').value.trim();
     const password = document.getElementById('miraEditPassword').value;
     const role = document.getElementById('miraEditRole').value;
@@ -452,12 +538,58 @@ async function updateUser() {
     
     if (!userId) return;
     
+    if (!newUsername) {
+        alert("Username cannot be empty");
+        return;
+    }
+    
+    if (!displayName) {
+        alert("Display name cannot be empty");
+        return;
+    }
+    
     const updateBtn = document.getElementById('miraUpdateUserBtn');
     updateBtn.disabled = true;
     updateBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Updating...';
     
     try {
+        // Get current user data to check if username changed
+        const { data: currentUser, error: fetchError } = await supabaseClient
+            .from('user_management')
+            .select('username')
+            .eq('id', userId)
+            .single();
+        
+        if (fetchError) throw fetchError;
+        
+        // Check if username is changed and if it's already taken
+        if (newUsername !== currentUser.username) {
+            console.log("Checking if username is available:", newUsername);
+            
+            // Check if username already exists (case-insensitive)
+            const { data: existingUsers, error: checkError } = await supabaseClient
+                .from('user_management')
+                .select('id, username')
+                .ilike('username', newUsername);
+            
+            if (checkError) throw checkError;
+            
+            // Filter out the current user
+            const otherUsers = existingUsers?.filter(u => u.id !== userId) || [];
+            
+            if (otherUsers.length > 0) {
+                alert(`Username "${newUsername}" is already taken. Please choose another one.`);
+                updateBtn.disabled = false;
+                updateBtn.innerHTML = '<i class="fas fa-save"></i> Update';
+                return;
+            }
+            
+            console.log("Username is available!");
+        }
+        
+        // Prepare update data
         const updateData = {
+            username: newUsername,
             display_name: displayName,
             role: role,
             is_active: isActive,
@@ -468,15 +600,25 @@ async function updateUser() {
             updateData.password_hash = password;
         }
         
+        console.log("Updating user with data:", updateData);
+        
         const { error } = await supabaseClient
             .from('user_management')
             .update(updateData)
             .eq('id', userId);
         
-        if (error) throw error;
+        if (error) {
+            console.error("Database update error:", error);
+            throw error;
+        }
         
         AdminModals.editUser.style.display = 'none';
+        
+        // Refresh the users list
         await loadAdminUsers();
+        
+        // Show success message (optional)
+        alert("User updated successfully!");
         
     } catch (error) {
         console.error("Error updating user:", error);
