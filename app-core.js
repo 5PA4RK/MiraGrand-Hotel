@@ -823,7 +823,10 @@ async function updateProfile() {
                 .select('id, username')
                 .ilike('username', newUsername); // Case-insensitive search
             
-            if (checkError) throw checkError;
+            if (checkError) {
+                console.error("Error checking username:", checkError);
+                throw checkError;
+            }
             
             // Filter out the current user
             const otherUsers = existingUsers?.filter(u => u.id !== AppState.userId) || [];
@@ -840,10 +843,16 @@ async function updateProfile() {
         
         // Prepare update data
         const updateData = {
-            username: newUsername,
             display_name: newDisplayName,
             updated_at: new Date().toISOString()
         };
+        
+        // Only include username in update if it changed
+        if (newUsername !== AppState.userName) {
+            updateData.username = newUsername;
+        }
+        
+        console.log("Updating user with data:", updateData);
         
         // Update the database
         const { error } = await supabaseClient
@@ -851,7 +860,10 @@ async function updateProfile() {
             .update(updateData)
             .eq('id', AppState.userId);
         
-        if (error) throw error;
+        if (error) {
+            console.error("Database update error:", error);
+            throw error;
+        }
         
         // Update app state
         const oldUsername = AppState.userName;
@@ -887,7 +899,6 @@ async function updateProfile() {
         DOM.updateProfileBtn.innerHTML = '<i class="fas fa-save"></i> Update Profile';
     }
 }
-
 async function handleProfileImageUpload(e) {
     const file = e.target.files[0];
     if (!file) return;
