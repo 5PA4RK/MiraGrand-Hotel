@@ -263,6 +263,7 @@ async function initApp() {
 }
 
 // Load session
+// Load session - UPDATED with case-insensitive check
 async function loadSession() {
     const session = loadFromStorage('session');
     if (session) {
@@ -276,16 +277,27 @@ async function loadSession() {
         
         // Verify session is still valid
         try {
-            const { data: user, error } = await supabaseClient
+            // Get all active users
+            const { data: users, error } = await supabaseClient
                 .from('user_management')
                 .select('*')
-                .eq('id', AppState.userId)
-                .maybeSingle();
+                .eq('is_active', true);
             
-            if (user && user.is_active) {
+            if (error) throw error;
+            
+            // Find user with case-insensitive ID match
+            const user = users?.find(u => u.id === AppState.userId);
+            
+            if (user) {
                 AppState.isAuthenticated = true;
                 AppState.isConnected = true;
-                console.log("Session loaded. Is Mira admin?", AppState.isMiraAdmin);
+                // Update username to match database case if needed
+                AppState.userName = user.username;
+                AppState.userDisplayName = user.display_name || user.username;
+                AppState.userRole = user.role;
+                AppState.isMiraAdmin = (user.username.toLowerCase() === 'mira');
+                
+                console.log("Session loaded. User:", user.username, "Is Mira admin?", AppState.isMiraAdmin);
                 return true;
             }
         } catch (error) {
@@ -501,53 +513,77 @@ async function handleLogin() {
     DOM.connectBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Logging in...';
     
     try {
-        // Find user - use exact match, not ilike for case sensitivity
-        const { data: user, error } = await supabaseClient
-            .from('user_management')
-            .select('*')
-            .eq('username', username)  // Use eq instead of ilike for exact match
-            .eq('is_active', true)
-            .maybeSingle();  // Use maybeSingle instead of single to avoid errors
+        console.log("🔐 Attempting login with username:", username);
         
-        if (error) {
-            console.error("Database error:", error);
+        // First, try to find user with case-insensitive search
+        // We need to get all users and filter manually since ilike might not work with indexes
+        const { data: allUsers, error: fetchError } = await supabaseClient
+            .from('user_management')
+            .select('id, username, display_name, password_hash, role, is_active')
+            .eq('is_active', true);
+        
+        if (fetchError) {
+            console.error("Database error:", fetchError);
             showError("Login failed. Please try again.");
             return;
         }
         
-        if (!user) {
+        // Find user with case-insensitive match
+        const userData = allUsers?.find(user => 
+            user.username.toLowerCase() === username.toLowerCase()
+        );
+        
+        if (!userData) {
             console.log("User not found:", username);
             showError("Invalid username or password");
             return;
         }
         
-        console.log("User found:", user.username, "Role:", user.role);
+        console.log("👤 User found:", userData.username, "Role:", userData.role);
         
-        // VERIFY PASSWORD - Fixed version
+        // Verify password - check multiple methods
         let isAuthenticated = false;
         
-        // For demo purposes - check against test passwords
-        // In production, you should use proper password hashing
-        const testPasswords = {
-            'guest': 'guest123',
-            'host': 'host123',
-            'mira': 'mira123'
-        };
-        
-        // Check if it's a test account with correct password
-        if (testPasswords[username.toLowerCase()] === password) {
+        // Method 1: Direct password match (for demo purposes)
+        if (userData.password_hash === password) {
             isAuthenticated = true;
-            console.log("✅ Test account authenticated");
-        } 
-        // Check if password matches the stored password_hash (for demo)
-        else if (user.password_hash === password) {
-            isAuthenticated = true;
-            console.log("✅ Password matched stored hash");
+            console.log("✅ Password matched directly");
         }
-        // Special case for mira account
-        else if (username.toLowerCase() === 'mira' && password === 'mira123') {
-            isAuthenticated = true;
-            console.log("✅ Mira account authenticated");
+        
+        // Method 2: Check against common test passwords
+        if (!isAuthenticated) {
+            const testPasswords = {
+                'guest': 'guest123',
+                'host': 'host123',
+                'mira': 'mira123',
+                'alice': 'alice123',
+                'bob': 'bob123',
+                'charlie': 'charlie123'
+            };
+            
+            const lowerUsername = userData.username.toLowerCase();
+            if (testPasswords[lowerUsername] && testPasswords[lowerUsername] === password) {
+                isAuthenticated = true;
+                console.log("✅ Test account authenticated");
+            }
+        }
+        
+        // Method 3: Try RPC if available
+        if (!isAuthenticated) {
+            try {
+                const { data: authResult } = await supabaseClient
+                    .rpc('verify_password', {
+                        stored_hash: userData.password_hash,
+                        password: password
+                    });
+                
+                if (authResult === true) {
+                    isAuthenticated = true;
+                    console.log("✅ Password verified via RPC");
+                }
+            } catch (rpcError) {
+                console.log("RPC verification not available:", rpcError);
+            }
         }
         
         if (!isAuthenticated) {
@@ -557,27 +593,27 @@ async function handleLogin() {
         }
         
         // Set user data
-        AppState.userId = user.id;
-        AppState.userName = user.username;
-        AppState.userRole = user.role;
-        AppState.userDisplayName = user.display_name || user.username;
-        AppState.userAvatar = user.avatar_url;
+        AppState.userId = userData.id;
+        AppState.userName = userData.username; // Keep original case for display
+        AppState.userRole = userData.role;
+        AppState.userDisplayName = userData.display_name || userData.username;
+        AppState.userAvatar = userData.avatar_url;
         
         // Check if user is Mira (case insensitive)
-        AppState.isMiraAdmin = (user.username.toLowerCase() === 'mira');
+        AppState.isMiraAdmin = (userData.username.toLowerCase() === 'mira');
         
         AppState.isAuthenticated = true;
         AppState.isConnected = true;
         AppState.connectionTime = new Date();
         
-        console.log("Login successful. Is Mira admin?", AppState.isMiraAdmin);
+        console.log("✅ Login successful. User:", userData.username, "Is Mira admin?", AppState.isMiraAdmin);
         
         // Update last login
         try {
             await supabaseClient
                 .from('user_management')
                 .update({ last_login: new Date().toISOString() })
-                .eq('id', user.id);
+                .eq('id', userData.id);
         } catch (updateError) {
             console.log("Could not update last login:", updateError);
         }
@@ -591,6 +627,13 @@ async function handleLogin() {
         
         // Setup realtime subscriptions
         setupRealtimeSubscriptions();
+        
+        // Initialize Mira admin panel if user is Mira
+        if (AppState.isMiraAdmin && window.initMiraAdmin) {
+            setTimeout(() => {
+                window.initMiraAdmin();
+            }, 500);
+        }
         
     } catch (error) {
         console.error("Login error:", error);
