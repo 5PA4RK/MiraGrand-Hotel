@@ -3,47 +3,40 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MiraGrand-Hotel - Virtual Stay & Chat</title>
+    <title>WriteToMira - Room Chat</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-<!-- Connection Modal (Login Required) -->
+<!-- Connection Modal -->
 <div id="connectionModal" class="connection-modal">
     <div class="modal-content">
         <div class="modal-header">
-            <h2><i class="fas fa-hotel"></i> Welcome to MiraGrand-Hotel</h2>
+            <h2><i class="fas fa-door-open"></i> WriteToMira Or Connect to Chat</h2>
         </div>
         <div class="modal-body">
-            <!-- Mira Message Box (No Login Required) -->
-<!-- Mira Message Box (No Login Required) -->
-<div class="mira-message-section">
-    <div class="mira-avatar">
-        <i class="fas fa-user-tie"></i> <!-- Changed from fa-robot to fa-user-tie -->
-    </div>
-    <div class="mira-message-content">
-        <h3>Message Mira <span class="mira-badge">Hotel Manager</span></h3> 
-        <p>No login required - Send a message to the Hotel Manager</p>
-        <div class="mira-input-group">
-            <textarea id="miraMessageInput" class="form-input" placeholder="Type your message to Mira (Hotel Manager)... (No login needed)" rows="2"></textarea>
-            <button id="sendMiraMessageBtn" class="btn btn-primary">
-                <i class="fas fa-paper-plane"></i> Send to Mira
-            </button>
-        </div>
-        <div id="miraMessageSuccess" class="success-message" style="display: none;">
-            <i class="fas fa-check-circle"></i> Message sent to Mira!
-        </div>
-    </div>
-</div>
+            <!-- Guest Notification Section - No Login Required -->
+            <div class="guest-notification-section" style="margin-bottom: 25px; padding: 15px; background: rgba(255, 193, 7, 0.1); border-radius: 12px; border: 1px solid #ffc107;">
+                <h3 style="color: #ffc107; margin-bottom: 10px;">
+                    <i class="fas fa-bell"></i> Write to Mira
+                </h3>
+                <p style="color: var(--text-secondary); margin-bottom: 15px; font-size: 14px;">
+                    You can leave a message to Mira (No Login Required)
+                </p>
+                <button id="guestNotifyBtn" class="btn btn-warning" style="width: 100%;">
+                    <i class="fas fa-paper-plane"></i> Leave a Message to Mira
+                </button>
+            </div>
 
-            <hr style="border-color: var(--border-color); margin: 25px 0;">
+            <hr style="border-color: var(--border-light); margin: 20px 0;">
 
-            <!-- Login Form -->
+            <!-- Connection Form -->
             <div class="connection-form">
-                <h3><i class="fas fa-sign-in-alt"></i> Login to Your Account</h3>
+                <h3><i class="fas fa-sign-in-alt"></i> Login to Chat</h3>
                 
+                <!-- Username Field -->
                 <div class="form-group">
                     <label for="usernameInput">
                         <i class="fas fa-user"></i> Username:
@@ -52,531 +45,359 @@
                            placeholder="Enter your username" autocomplete="off">
                 </div>
                 
+                <!-- Password Field -->
                 <div class="form-group">
                     <label for="passwordInput">
                         <i class="fas fa-lock"></i> Password:
                     </label>
                     <input type="password" id="passwordInput" class="form-input" 
                            placeholder="Enter your password">
+                    <div class="password-hint" id="passwordHint"></div>
                 </div>
+        
                 
+                <!-- Error Message Area -->
                 <div id="passwordError" class="error-message" style="display: none;">
                     <i class="fas fa-exclamation-circle"></i>
                     <span></span>
                 </div>
                 
-                <button id="connectBtn" class="btn btn-primary btn-large connect-button">
+                <!-- CONNECT BUTTON -->
+                <button id="connectBtn" class="btn btn-primary btn-large connect-button" style="width: 100%;">
                     <i class="fas fa-plug"></i>
-                    <span>Login to MiraGrand-Hotel</span>
+                    <span>Connect & Join Chat</span>
                 </button>
                 
+                <!-- Connection Help Text -->
                 <div class="connection-help">
-                    <small>
-                        <i class="fas fa-info-circle"></i>
-                        Test accounts: guest/guest123, host/host123, mira/mira123
-                    </small>
                 </div>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Main Navigation Bar (Shown after login) -->
-<header id="mainHeader" style="display: none;">
+<!-- Guest Notification Modal (No Login Required) -->
+<div id="guestNotificationModal" class="modal-overlay" style="display: none;">
+    <div class="modal-content" style="max-width: 500px;">
+        <div class="modal-header">
+            <h2><i class="fas fa-bell"></i> Leave Message to Mira</h2>
+            <button id="closeGuestNotifyModal" class="btn btn-secondary btn-small">
+                <i class="fas fa-times"></i> Close
+            </button>
+        </div>
+        <div class="modal-body">
+            
+            <div class="form-group">
+                <label for="guestNotifyName"><i class="fas fa-user"></i> Your Name:</label>
+                <input type="text" id="guestNotifyName" class="form-input" placeholder="Enter your name">
+            </div>
+            
+            <div class="form-group">
+                <label for="guestNotifyEmail">
+                    <i class="fas fa-envelope"></i> Your Email <span style="color: var(--text-secondary); font-weight: normal;">(optional)</span>:
+                </label>
+                <input type="email" id="guestNotifyEmail" class="form-input" placeholder="Enter your email (optional)">
+            </div>
+            
+            <div class="form-group">
+                <label for="guestNotifyMessage"><i class="fas fa-comment"></i> Message:</label>
+                <textarea id="guestNotifyMessage" class="form-input" rows="5" placeholder="Write your message to Mira here..."></textarea>
+            </div>
+            
+            <div id="guestNotifyError" class="error-message" style="display: none;"></div>
+            <div id="guestNotifySuccess" class="success-message" style="display: none; color: var(--success-green); padding: 10px; background: rgba(78, 205, 196, 0.1); border-radius: 8px; margin-top: 10px;"></div>
+            
+            <button id="sendGuestNotification" class="btn btn-warning" style="width: 100%; margin-top: 20px;">
+                <i class="fas fa-paper-plane"></i> Send Message
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Pending Guests Modal -->
+<div id="pendingGuestsModal" class="modal-overlay" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2><i class="fas fa-user-clock"></i> Pending Room Requests</h2>
+            <button id="closePendingModal" class="btn btn-secondary btn-small">
+                <i class="fas fa-times"></i> Close
+            </button>
+        </div>
+        <div class="modal-body">
+            <div id="pendingGuestsList" class="pending-guests-list"></div>
+            <div id="noPendingGuests" style="text-align: center; padding: 20px; color: var(--text-secondary);">
+                No pending requests at the moment.
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Notes Panel (Host Only) -->
+<div id="notesPanel" class="notes-panel">
+    <div class="notes-panel-header">
+        <h2><i class="fas fa-sticky-note"></i> Visitor Notes</h2>
+        <div class="notes-header-actions">
+            <button id="markAllReadBtn" class="btn btn-small btn-success" title="Mark all as read">
+                <i class="fas fa-check-double"></i>
+            </button>
+            <button id="refreshNotesBtn" class="btn btn-small btn-secondary" title="Refresh">
+                <i class="fas fa-sync-alt"></i>
+            </button>
+            <button id="closeNotesPanel" class="btn btn-small btn-danger" title="Close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+    </div>
+    
+    <div class="notes-panel-search">
+        <input type="text" id="notesSearchInput" placeholder="Search notes..." class="form-input">
+        <i class="fas fa-search"></i>
+    </div>
+    
+    <div class="notes-list" id="notesList">
+        <div class="loading-notes">
+            <div class="loading-spinner"></div>
+            <p>Loading notes...</p>
+        </div>
+    </div>
+</div>
+
+<!-- Image Modal -->
+<div id="imageModal" class="image-modal-overlay" style="display: none;">
+    <div class="image-modal-content">
+        <button class="close-image-modal" onclick="document.getElementById('imageModal').style.display='none'">
+            <i class="fas fa-times"></i>
+        </button>
+        <img id="fullSizeImage" src="" alt="Full size image">
+    </div>
+</div>
+
+<header>
     <div class="container">
         <div class="header-content">
             <div class="logo">
-                <i class="fas fa-hotel"></i>
-                <h1>MiraGrand-Hotel</h1>
+                <i class="fas fa-door-open"></i>
+                <h1>WriteToMira</h1>
             </div>
-            
-            <div class="hotel-nav" id="hotelNav">
-                <button class="nav-btn" data-panel="profile">
-                    <i class="fas fa-user-circle"></i>
-                    <span>My Profile</span>
-                </button>
-                <button class="nav-btn" data-panel="reception">
-                    <i class="fas fa-concierge-bell"></i>
-                    <span>Reception</span>
-                </button>
-                <button class="nav-btn" data-panel="hall">
-                    <i class="fas fa-users"></i>
-                    <span>The Hall</span>
-                </button>
-                <button class="nav-btn" data-panel="myroom">
-                    <i class="fas fa-door-open"></i>
-                    <span>My Room</span>
-                </button>
-            </div>
-            
             <div class="header-controls">
+
+                <!-- Theme Toggle -->
+                <div class="theme-toggle">
+                    <button class="theme-toggle-btn active" id="lightModeBtn" onclick="setTheme('light')">
+                        <i class="fas fa-sun"></i> Light
+                    </button>
+                    <button class="theme-toggle-btn" id="darkModeBtn" onclick="setTheme('dark')">
+                        <i class="fas fa-moon"></i> Dark
+                    </button>
+                </div>
+                
+                <div class="sound-control" id="soundControl">
+                    <i class="fas fa-volume-up"></i>
+                    <span>Sound On</span>
+                </div>
+
                 <div class="user-status">
                     <div id="statusIndicator" class="status-indicator offline"></div>
                     <span id="userRoleDisplay">Disconnected</span>
                 </div>
                 
-                <!-- Mira Admin Panel Button (Only visible to Mira) -->
-                <button id="adminPanelBtn" class="btn btn-secondary" style="display: none;">
-                    <i class="fas fa-crown"></i> Admin
+                <!-- Notes Button (Host Only) -->
+                <button id="notesBtn" class="btn btn-secondary" style="display: none; position: relative;">
+                    <i class="fas fa-sticky-note"></i>
+                    <span id="notesCount" class="notes-count-badge">0</span>
+                    Notes
+                </button>
+                
+                <button id="pendingGuestsBtn" class="btn btn-secondary" style="display: none;">
+                    <i class="fas fa-user-clock"></i> 
+                    <span id="pendingCount">0</span> Pending
                 </button>
                 
                 <button id="logoutBtn" class="btn btn-secondary" style="display: none;">
                     <i class="fas fa-sign-out-alt"></i> Logout
+                </button>
+                                    <!-- Add Clear Chat button here -->
+                <button id="clearChatBtn" class="btn btn-danger btn-small">
+                  <i class="fas fa-trash-alt"></i> Clear Chat
                 </button>
             </div>
         </div>
     </div>
 </header>
 
-<!-- Main Content Area - Panels -->
-<div class="container main-content" id="mainContent" style="display: none;">
-    
-    <!-- MY PROFILE PANEL -->
-    <div id="profilePanel" class="panel active-panel">
-        <div class="panel-header">
-            <h2><i class="fas fa-user-circle"></i> My Profile</h2>
-        </div>
-        <div class="panel-content">
-            <div class="profile-avatar-section">
-                <div class="profile-avatar" id="profileAvatar">
-                    <i class="fas fa-user"></i>
-                </div>
-                <div class="avatar-upload">
-                    <label for="profileImageUpload" class="btn btn-small">
-                        <i class="fas fa-camera"></i> Upload Photo
-                    </label>
-                    <input type="file" id="profileImageUpload" accept="image/*" style="display: none;">
-                </div>
-            </div>
-            
-            <div class="profile-info">
-                <div class="form-group">
-                    <label><i class="fas fa-user"></i> Username:</label>
-                    <input type="text" id="profileUsername" class="form-input" placeholder="Enter username">
-                </div>
-                
-                <div class="form-group">
-                    <label><i class="fas fa-id-card"></i> Display Name:</label>
-                    <input type="text" id="profileDisplayName" class="form-input" placeholder="Enter display name">
-                </div>
-                
-                <div class="form-group">
-                    <label><i class="fas fa-tag"></i> Role:</label>
-                    <input type="text" id="profileRole" class="form-input" readonly>
-                </div>
-                
-                <div class="profile-actions">
-                    <button id="updateProfileBtn" class="btn btn-success">
-                        <i class="fas fa-save"></i> Update Profile
+<div class="container">
+    <div class="main-app">
+        <!-- Chat Section -->
+        <section class="chat-section">
+            <div class="section-header">
+                <h2 id="chatTitle"><i class="fas fa-comments"></i> Active Chat</h2>
+                <div class="chat-mode-indicator" id="chatModeIndicator" style="display: none;">
+                    <i class="fas fa-history"></i>
+                    <span>Viewing Room History</span>
+                    <button id="returnToActiveBtn" class="btn btn-small btn-success">
+                        <i class="fas fa-arrow-left"></i> Return to Active
                     </button>
                 </div>
-                
-                <div id="profileUpdateMessage" class="success-message" style="display: none;"></div>
             </div>
-        </div>
-    </div>
-    
-    <!-- RECEPTION PANEL -->
-    <div id="receptionPanel" class="panel">
-        <div class="panel-header">
-            <h2><i class="fas fa-concierge-bell"></i> Reception</h2>
-            <div class="panel-actions">
-                <button id="createRoomBtn" class="btn btn-success">
-                    <i class="fas fa-plus-circle"></i> Create New Room
-                </button>
-            </div>
-        </div>
-        
-        <div class="panel-content">
-            <div class="reception-tabs">
-                <button class="reception-tab active" data-tab="available">Available Rooms</button>
-                <button class="reception-tab" data-tab="pending">Pending Requests</button>
-            </div>
-            
-            <div id="availableRoomsTab" class="reception-tab-content active">
-                <div class="rooms-grid" id="availableRoomsList">
-                    <div class="loading-spinner"></div>
-                    <p>Loading rooms...</p>
-                </div>
-            </div>
-            
-            <div id="pendingRequestsTab" class="reception-tab-content">
-                <div class="pending-requests-list" id="pendingRequestsList">
-                    <div class="empty-state">
-                        <i class="fas fa-check-circle"></i>
-                        <p>No pending requests</p>
+            <div class="chat-messages" id="chatMessages">
+                <div class="message received">
+                    <div class="message-sender">System</div>
+                    <div class="message-content">
+                        <div class="message-text">Welcome to WriteToMira! Select a room and connect to start chatting.</div>
+                        <div class="message-time">Just now</div>
                     </div>
                 </div>
             </div>
-        </div>
-    </div>
-    
-    <!-- THE HALL PANEL -->
-    <div id="hallPanel" class="panel">
-        <div class="panel-header">
-            <h2><i class="fas fa-users"></i> The Hall</h2>
-            <div class="hall-status">
-                <span id="hallParticipantCount">0</span> participants
+            <div id="typingIndicator" class="typing-indicator">
+                <i class="fas fa-pencil-alt"></i> <span id="typingUser">User</span> is typing...
             </div>
-        </div>
-        
-        <div class="hall-layout">
-            <!-- Hall Chat -->
-            <div class="hall-chat-section">
-                <div class="hall-messages" id="hallMessages">
-                    <div class="message received">
-                        <div class="message-sender">Hall System</div>
-                        <div class="message-content">
-                            <div class="message-text">Welcome to The Hall! Everyone can chat here.</div>
-                            <div class="message-time">Just now</div>
-                        </div>
+            <div class="chat-input-area">
+                <div class="chat-input-wrapper">
+                    <textarea id="messageInput" class="message-input" placeholder="Type your message here..." disabled></textarea>
+                    <div class="input-actions">
+                        <label for="imageUpload" class="file-input-label">
+                            <i class="fas fa-image"></i>
+                            <input type="file" id="imageUpload" accept="image/*" style="display: none;">
+                        </label>
+                        <button id="emojiBtn" class="file-input-label">
+                            <i class="fas fa-smile"></i>
+                        </button>
+                        <div class="emoji-picker" id="emojiPicker" style="display: none;"></div>
                     </div>
                 </div>
-                
-                <div class="hall-participants-bar">
-                    <span><i class="fas fa-users"></i> Participants:</span>
-                    <span id="hallParticipantsList">Loading...</span>
-                </div>
-                
-                <div class="hall-input-area">
-                    <textarea id="hallMessageInput" class="message-input" placeholder="Type message to The Hall..."></textarea>
-                    <button id="sendHallMessageBtn" class="btn">
-                        <i class="fas fa-paper-plane"></i> Send
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <!-- MY ROOM PANEL -->
-    <div id="myRoomPanel" class="panel">
-        <div class="panel-header">
-            <h2><i class="fas fa-door-open"></i> My Rooms</h2>
-        </div>
-        
-        <div class="panel-content">
-            <div class="my-rooms-list" id="myRoomsList">
-                <!-- Rooms will be listed here -->
-            </div>
-            
-            <!-- Room Chat Container (shown when room selected) -->
-            <div id="roomChatContainer" style="display: none;">
-                <div class="room-chat-header">
-                    <button id="backToRoomsBtn" class="btn btn-small btn-secondary">
-                        <i class="fas fa-arrow-left"></i> Back to Rooms
-                    </button>
-                    <h3 id="currentRoomTitle">Room Chat</h3>
-                </div>
-                
-                <div class="chat-messages" id="roomMessages"></div>
-                
-                <div class="chat-input-area">
-                    <textarea id="roomMessageInput" class="message-input" placeholder="Type your message..."></textarea>
-                    <button id="sendRoomMessageBtn" class="btn">
-                        <i class="fas fa-paper-plane"></i> Send
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <!-- ADMIN PANEL (Only visible to Mira) -->
-    <div id="adminPanel" class="panel" style="display: none;">
-        <div class="panel-header">
-            <h2><i class="fas fa-crown"></i> Mira Admin Panel</h2>
-        </div>
-        
-        <div class="admin-tabs">
-            <button class="admin-tab active" data-tab="users">User Management</button>
-            <button class="admin-tab" data-tab="rooms">Room Management</button>
-            <button class="admin-tab" data-tab="messages">Messages to Mira</button>
-        </div>
-        
-        <div id="adminUsersTab" class="admin-tab-content active">
-            <div class="user-management-controls">
-                <button id="addUserBtn" class="btn btn-success">
-                    <i class="fas fa-user-plus"></i> Add User
+                <button id="sendMessageBtn" class="btn" disabled>
+                    <i class="fas fa-paper-plane"></i> Send
                 </button>
-                <div class="search-box">
-                    <input type="text" id="userSearchInput" placeholder="Search users...">
-                    <i class="fas fa-search"></i>
-                </div>
             </div>
-            <div class="users-list" id="adminUsersList"></div>
-        </div>
-        
-        <div id="adminRoomsTab" class="admin-tab-content">
-            <div class="rooms-list" id="adminRoomsList"></div>
-        </div>
-        
-        <div id="adminMessagesTab" class="admin-tab-content">
-            <div class="messages-to-mira" id="messagesToMiraList"></div>
-        </div>
+        </section>
     </div>
 </div>
 
-<!-- Enhanced Admin Panel (Only visible to Mira) -->
-<div id="miraAdminPanel" class="admin-panel" style="display: none;">
-    <div class="admin-header">
-        <h2><i class="fas fa-crown"></i> Mira Control Panel</h2>
-        <div class="admin-status">
-            <span class="admin-badge">Administrator</span>
-        </div>
-    </div>
-    
+<!-- Admin Panel (Host Only) -->
+<div class="admin-panel" id="adminSection" style="display: none;">
     <div class="admin-tabs">
-        <button class="admin-tab active" data-mira-tab="dashboard">
-            <i class="fas fa-chart-line"></i> Dashboard
+        <button id="historyTabBtn" class="admin-tab active">
+            <i class="fas fa-door-open"></i> Rooms
         </button>
-        <button class="admin-tab" data-mira-tab="users">
+        <button id="usersTabBtn" class="admin-tab">
             <i class="fas fa-users-cog"></i> User Management
         </button>
-        <button class="admin-tab" data-mira-tab="rooms">
-            <i class="fas fa-door-open"></i> Room Management
-        </button>
-        <button class="admin-tab" data-mira-tab="messages">
-            <i class="fas fa-envelope"></i> Messages to Mira
-        </button>
-        <button class="admin-tab" data-mira-tab="analytics">
-            <i class="fas fa-chart-bar"></i> Analytics
-        </button>
     </div>
     
-    <!-- Dashboard Tab -->
-    <div id="miraDashboardTab" class="admin-tab-content active">
-        <div class="stats-grid">
-            <div class="stat-card">
-                <div class="stat-icon">
-                    <i class="fas fa-users"></i>
+    <div class="admin-tab-content">
+        <div id="historyTabContent" class="tab-pane active">
+            <div class="history-section">
+                <div class="section-header">
+                    <h2><i class="fas fa-door-open"></i> Rooms & History</h2>
+                    <button id="refreshHistoryBtn" class="btn btn-small">
+                        <i class="fas fa-sync-alt"></i>
+                    </button>
                 </div>
-                <div class="stat-details">
-                    <span class="stat-value" id="totalUsersStat">0</span>
-                    <span class="stat-label">Total Users</span>
-                </div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-icon">
-                    <i class="fas fa-door-open"></i>
-                </div>
-                <div class="stat-details">
-                    <span class="stat-value" id="totalRoomsStat">0</span>
-                    <span class="stat-label">Active Rooms</span>
-                </div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-icon">
-                    <i class="fas fa-comments"></i>
-                </div>
-                <div class="stat-details">
-                    <span class="stat-value" id="totalMessagesStat">0</span>
-                    <span class="stat-label">Total Messages</span>
-                </div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-icon">
-                    <i class="fas fa-clock"></i>
-                </div>
-                <div class="stat-details">
-                    <span class="stat-value" id="activeNowStat">0</span>
-                    <span class="stat-label">Active Now</span>
-                </div>
+                <div class="history-cards" id="historyCards"></div>
             </div>
         </div>
         
-        <div class="recent-activity">
-            <h3><i class="fas fa-history"></i> Recent Activity</h3>
-            <div class="activity-list" id="recentActivityList">
-                <div class="loading-spinner"></div>
-            </div>
-        </div>
-    </div>
-    
-    <!-- User Management Tab -->
-    <div id="miraUsersTab" class="admin-tab-content">
-        <div class="admin-controls">
-            <button id="miraAddUserBtn" class="btn btn-success">
-                <i class="fas fa-user-plus"></i> Add New User
-            </button>
-            <div class="search-box">
-                <input type="text" id="miraUserSearch" placeholder="Search users...">
-                <i class="fas fa-search"></i>
-            </div>
-        </div>
-        
-        <div class="users-table-container">
-            <table class="admin-table" id="usersTable">
-                <thead>
-                    <tr>
-                        <th>Username</th>
-                        <th>Display Name</th>
-                        <th>Role</th>
-                        <th>Status</th>
-                        <th>Last Login</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody id="usersTableBody">
-                    <tr>
-                        <td colspan="6" class="loading-row">Loading users...</td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-    </div>
-    
-    <!-- Room Management Tab -->
-    <div id="miraRoomsTab" class="admin-tab-content">
-        <div class="admin-controls">
-            <button id="refreshRoomsBtn" class="btn btn-secondary">
-                <i class="fas fa-sync-alt"></i> Refresh
-            </button>
-            <div class="search-box">
-                <input type="text" id="roomSearch" placeholder="Search rooms...">
-                <i class="fas fa-search"></i>
-            </div>
-        </div>
-        
-        <div class="rooms-table-container">
-            <table class="admin-table" id="roomsTable">
-                <thead>
-                    <tr>
-                        <th>Room Name</th>
-                        <th>Host</th>
-                        <th>Guests</th>
-                        <th>Status</th>
-                        <th>Created</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody id="roomsTableBody">
-                    <tr>
-                        <td colspan="6" class="loading-row">Loading rooms...</td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-    </div>
-    
-    <!-- Messages to Mira Tab -->
-    <div id="miraMessagesTab" class="admin-tab-content">
-        <div class="admin-controls">
-            <button id="refreshMessagesBtn" class="btn btn-secondary">
-                <i class="fas fa-sync-alt"></i> Refresh
-            </button>
-            <button id="markAllReadBtn" class="btn btn-success">
-                <i class="fas fa-check-double"></i> Mark All Read
-            </button>
-        </div>
-        
-        <div class="messages-container" id="miraMessagesList">
-            <div class="loading-spinner"></div>
-        </div>
-    </div>
-    
-    <!-- Analytics Tab -->
-    <div id="miraAnalyticsTab" class="admin-tab-content">
-        <div class="analytics-grid">
-            <div class="analytics-card">
-                <h4>User Roles Distribution</h4>
-                <canvas id="userRolesChart" width="400" height="200"></canvas>
-            </div>
-            <div class="analytics-card">
-                <h4>Room Activity</h4>
-                <canvas id="roomActivityChart" width="400" height="200"></canvas>
-            </div>
-            <div class="analytics-card full-width">
-                <h4>Daily Active Users</h4>
-                <canvas id="dailyActiveChart" width="800" height="200"></canvas>
+        <div id="usersTabContent" class="tab-pane">
+            <div class="user-management-section">
+                <div class="section-header">
+                    <h2><i class="fas fa-users-cog"></i> User Management</h2>
+                </div>
+                
+                <div class="user-management-controls">
+                    <button id="addUserBtn" class="btn btn-success">
+                        <i class="fas fa-user-plus"></i> Add New User
+                    </button>
+                    <div class="search-box">
+                        <input type="text" id="userSearchInput" placeholder="Search users..." class="form-input">
+                        <i class="fas fa-search"></i>
+                    </div>
+                </div>
+                
+                <div class="users-list" id="usersList"></div>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Mira Add User Modal -->
-<div id="miraAddUserModal" class="modal-overlay" style="display: none;">
+<!-- Add User Modal -->
+<div id="addUserModal" class="modal-overlay" style="display: none;">
     <div class="modal-content">
         <div class="modal-header">
-            <h2><i class="fas fa-user-plus"></i> Add New User (Mira)</h2>
-            <button class="btn btn-secondary btn-small close-modal">
-                <i class="fas fa-times"></i>
+            <h2><i class="fas fa-user-plus"></i> Add New User</h2>
+            <button id="closeAddUserModal" class="btn btn-secondary btn-small">
+                <i class="fas fa-times"></i> Close
             </button>
         </div>
         <div class="modal-body">
             <div class="form-group">
-                <label><i class="fas fa-user"></i> Username:</label>
-                <input type="text" id="miraNewUsername" class="form-input" placeholder="Enter username">
+                <label for="newUsername"><i class="fas fa-user"></i> Username:</label>
+                <input type="text" id="newUsername" class="form-input" placeholder="Enter username">
             </div>
             <div class="form-group">
-                <label><i class="fas fa-id-card"></i> Display Name:</label>
-                <input type="text" id="miraNewDisplayName" class="form-input" placeholder="Enter display name">
+                <label for="newDisplayName"><i class="fas fa-id-card"></i> Display Name:</label>
+                <input type="text" id="newDisplayName" class="form-input" placeholder="Enter display name">
             </div>
             <div class="form-group">
-                <label><i class="fas fa-lock"></i> Password:</label>
-                <input type="password" id="miraNewPassword" class="form-input" placeholder="Enter password">
+                <label for="newPassword"><i class="fas fa-lock"></i> Password:</label>
+                <input type="password" id="newPassword" class="form-input" placeholder="Enter password">
             </div>
             <div class="form-group">
-                <label><i class="fas fa-tag"></i> Role:</label>
-                <select id="miraNewRole" class="form-input">
+                <label for="newRole"><i class="fas fa-user-tag"></i> Role:</label>
+                <select id="newRole" class="form-input">
                     <option value="guest">Guest</option>
                     <option value="host">Host</option>
-                    <option value="admin">Admin</option>
                 </select>
             </div>
-            <div class="form-group">
-                <label>
-                    <input type="checkbox" id="miraNewActive" checked> Active Account
-                </label>
-            </div>
-            <div id="miraAddUserError" class="error-message" style="display: none;"></div>
-            <button id="miraSaveUserBtn" class="btn" style="width: 100%;">
-                <i class="fas fa-save"></i> Create User
+            <div id="addUserError" class="error-message" style="display: none;"></div>
+            <button id="saveUserBtn" class="btn" style="width: 100%; margin-top: 20px;">
+                <i class="fas fa-save"></i> Save User
             </button>
         </div>
     </div>
 </div>
 
-<!-- Mira Edit User Modal -->
-<div id="miraEditUserModal" class="modal-overlay" style="display: none;">
+<!-- Edit User Modal -->
+<div id="editUserModal" class="modal-overlay" style="display: none;">
     <div class="modal-content">
         <div class="modal-header">
             <h2><i class="fas fa-user-edit"></i> Edit User</h2>
-            <button class="btn btn-secondary btn-small close-modal">
-                <i class="fas fa-times"></i>
+            <button id="closeEditUserModal" class="btn btn-secondary btn-small">
+                <i class="fas fa-times"></i> Close
             </button>
         </div>
         <div class="modal-body">
-            <input type="hidden" id="miraEditUserId">
+            <input type="hidden" id="editUserId">
             <div class="form-group">
-                <label><i class="fas fa-user"></i> Username:</label>
-                <input type="text" id="miraEditUsername" class="form-input" readonly>
+                <label for="editUsername"><i class="fas fa-user"></i> Username:</label>
+                <input type="text" id="editUsername" class="form-input" readonly>
             </div>
             <div class="form-group">
-                <label><i class="fas fa-id-card"></i> Display Name:</label>
-                <input type="text" id="miraEditDisplayName" class="form-input">
+                <label for="editDisplayName"><i class="fas fa-id-card"></i> Display Name:</label>
+                <input type="text" id="editDisplayName" class="form-input">
             </div>
             <div class="form-group">
-                <label><i class="fas fa-lock"></i> New Password (leave blank to keep current):</label>
-                <input type="password" id="miraEditPassword" class="form-input" placeholder="Enter new password">
+                <label for="editPassword"><i class="fas fa-lock"></i> New Password (leave blank to keep current):</label>
+                <input type="password" id="editPassword" class="form-input" placeholder="Enter new password">
             </div>
             <div class="form-group">
-                <label><i class="fas fa-tag"></i> Role:</label>
-                <select id="miraEditRole" class="form-input">
+                <label for="editRole"><i class="fas fa-user-tag"></i> Role:</label>
+                <select id="editRole" class="form-input">
                     <option value="guest">Guest</option>
                     <option value="host">Host</option>
-                    <option value="admin">Admin</option>
                 </select>
             </div>
             <div class="form-group">
-                <label>
-                    <input type="checkbox" id="miraEditActive"> Active Account
+                <label for="editIsActive" style="display: flex; align-items: center; gap: 10px;">
+                    <input type="checkbox" id="editIsActive" style="width: auto;">
+                    <span>Active Account</span>
                 </label>
             </div>
-            <div id="miraEditUserError" class="error-message" style="display: none;"></div>
-            <div class="modal-actions">
-                <button id="miraUpdateUserBtn" class="btn" style="flex: 1;">
+            <div id="editUserError" class="error-message" style="display: none;"></div>
+            <div class="modal-actions" style="display: flex; gap: 10px; margin-top: 20px;">
+                <button id="updateUserBtn" class="btn" style="flex: 1;">
                     <i class="fas fa-save"></i> Update
                 </button>
-                <button id="miraDeleteUserBtn" class="btn btn-danger" style="flex: 1;">
+                <button id="deleteUserBtn" class="btn btn-danger" style="flex: 1;">
                     <i class="fas fa-trash"></i> Delete
                 </button>
             </div>
@@ -585,88 +406,129 @@
 </div>
 
 
-<!-- Create Room Modal -->
-<div id="createRoomModal" class="modal-overlay" style="display: none;">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h2><i class="fas fa-plus-circle"></i> Create New Room</h2>
-            <button class="btn btn-secondary btn-small close-modal">
-                <i class="fas fa-times"></i>
-            </button>
-        </div>
-        <div class="modal-body">
-            <div class="form-group">
-                <label for="roomName"><i class="fas fa-tag"></i> Room Name:</label>
-                <input type="text" id="roomName" class="form-input" placeholder="Enter room name">
-            </div>
-            
-            <div class="form-group">
-                <label for="roomDescription"><i class="fas fa-align-left"></i> Description (Optional):</label>
-                <textarea id="roomDescription" class="form-input" rows="3" placeholder="Describe your room..."></textarea>
-            </div>
-            
-            <div class="form-group">
-                <label>
-                    <input type="checkbox" id="roomRequireApproval" checked>
-                    Require host approval for guests to join
-                </label>
-            </div>
-            
-            <div id="createRoomError" class="error-message" style="display: none;"></div>
-            
-            <button id="saveRoomBtn" class="btn" style="width: 100%;">
-                <i class="fas fa-hotel"></i> Create Room
-            </button>
-        </div>
-    </div>
-</div>
-
-<!-- Visit Room Request Modal -->
-<div id="visitRoomModal" class="modal-overlay" style="display: none;">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h2><i class="fas fa-door-open"></i> Request to Visit Room</h2>
-            <button class="btn btn-secondary btn-small close-modal">
-                <i class="fas fa-times"></i>
-            </button>
-        </div>
-        <div class="modal-body">
-            <p id="visitRoomInfo"></p>
-            
-            <div class="form-group">
-                <label for="visitNote"><i class="fas fa-sticky-note"></i> Note to Host (Optional):</label>
-                <textarea id="visitNote" class="form-input" rows="3" placeholder="Tell the host why you'd like to visit..."></textarea>
-            </div>
-            
-            <div id="visitRoomError" class="error-message" style="display: none;"></div>
-            
-            <button id="sendVisitRequestBtn" class="btn" style="width: 100%;">
-                <i class="fas fa-paper-plane"></i> Send Request
-            </button>
-        </div>
-    </div>
-</div>
-
-<!-- Image Modal -->
-<div id="imageModal" class="image-modal-overlay" style="display: none;">
-    <div class="image-modal-content">
-        <button class="close-image-modal">
-            <i class="fas fa-times"></i>
-        </button>
-        <img id="fullSizeImage" src="" alt="Full size image">
-    </div>
-</div>
 
 <footer>
-    <div class="container">
-        <p>MiraGrand-Hotel &copy; 2025 - Where Virtual Stays Become Real Conversations</p>
+    <div class="container" align="center">
+        <p>WriteToMira &copy; 2026</p>
+        <p>Secure Communication Platform</p>
     </div>
 </footer>
 
-<!-- Scripts -->
-<script src="app-core.js"></script>
-<script src="app-chat.js"></script>
-<script src="app-hotel.js"></script>
-<script src="app-admin.js"></script>
+
+<script src="app.js"></script>
+<script src="chat.js"></script>
+
+<script>
+// Theme switching - added directly to HTML to ensure it loads
+(function() {
+    function setTheme(theme) {
+        const body = document.body;
+        const lightBtn = document.getElementById('lightModeBtn');
+        const darkBtn = document.getElementById('darkModeBtn');
+        
+        if (theme === 'dark') {
+            body.classList.add('dark-mode');
+            if (lightBtn) lightBtn.classList.remove('active');
+            if (darkBtn) darkBtn.classList.add('active');
+            localStorage.setItem('writeToMe_theme', 'dark');
+        } else {
+            body.classList.remove('dark-mode');
+            if (lightBtn) lightBtn.classList.add('active');
+            if (darkBtn) darkBtn.classList.remove('active');
+            localStorage.setItem('writeToMe_theme', 'light');
+        }
+    }
+    
+    // Load saved theme
+    const savedTheme = localStorage.getItem('writeToMe_theme');
+    if (savedTheme === 'dark') {
+        setTheme('dark');
+    }
+    
+    // Make setTheme globally available
+    window.setTheme = setTheme;
+})();
+</script>
+
+<!-- Add this CSS for viewport fix -->
+<style>
+    /* Viewport height fix for mobile */
+    :root {
+        --vh: 1vh;
+    }
+    
+    @media (max-width: 768px) {
+        .chat-section {
+            height: calc(var(--vh, 1vh) * 100 - 130px) !important;
+        }
+        
+        .message.optimistic {
+            opacity: 0.7;
+            animation: pulse 1s ease-in-out;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 0.7; }
+            50% { opacity: 1; }
+        }
+        
+        /* Ensure modal doesn't cause scroll issues */
+        body.modal-open {
+            overflow: hidden;
+            position: fixed;
+            width: 100%;
+            height: 100%;
+        }
+        
+        #replyModal.modal-overlay {
+            align-items: flex-end;
+        }
+        
+        #replyModal .modal-content {
+            margin-bottom: 0;
+            border-radius: 20px 20px 0 0;
+            animation: slideUp 0.3s ease;
+        }
+        
+        @keyframes slideUp {
+            from {
+                transform: translateY(100%);
+            }
+            to {
+                transform: translateY(0);
+            }
+        }
+    }
+</style>
+
+<!-- Reply Modal -->
+<div id="replyModal" class="modal-overlay" style="display: none;">
+    <div class="modal-content" style="max-width: 500px;">
+        <div class="modal-header">
+            <h2><i class="fas fa-reply"></i> Reply to Message</h2>
+            <button id="closeReplyModal" class="btn btn-secondary btn-small">
+                <i class="fas fa-times"></i> Close
+            </button>
+        </div>
+        <div class="modal-body">
+            <div style="background: var(--bg-tertiary); padding: 15px; border-radius: 8px; margin-bottom: 20px; border-left: 3px solid var(--primary); max-height: 150px; overflow-y: auto;">
+                <strong style="display: block; margin-bottom: 5px;">Replying to <span id="replyToName">User</span>:</strong>
+                <p id="replyToContent" style="margin: 0; font-style: italic; color: var(--text-secondary); word-break: break-word;"></p>
+            </div>
+            <div class="form-group">
+                <label for="replyInput"><i class="fas fa-comment"></i> Your Reply:</label>
+                <textarea id="replyInput" class="form-input" rows="4" placeholder="Type your reply here..." style="resize: vertical;"></textarea>
+            </div>
+            <div style="display: flex; gap: 10px; margin-top: 20px;">
+                <button id="sendReplyBtn" class="btn btn-primary" style="flex: 2;">
+                    <i class="fas fa-paper-plane"></i> Send Reply
+                </button>
+                <button id="closeReplyModalBtn" class="btn btn-secondary" style="flex: 1;" onclick="document.getElementById('replyModal').style.display='none'; if(appState) appState.replyingTo = null;">
+                    <i class="fas fa-times"></i> Cancel
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 </body>
 </html>
